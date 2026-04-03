@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <stdlib.h>
 using namespace std;
+//两路链式累加
 
 // const int N = 33554432;
 

@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <stdlib.h>
 using namespace std;
+//平凡算法
 
 // const int N = 33554432;
 

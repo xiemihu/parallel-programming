@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <stdlib.h>
 using namespace std;
+//二重循环算法
 
 int main() {
     const int N = 33554432;
