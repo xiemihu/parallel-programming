@@ -27,17 +27,33 @@ int main()
         "81dc9bdb52d04dc20036dbd8313ed055",
         "96e79218965eb72c92a549dd5a330112"
     };
-    for (int i = 0; i < 8; i++) {
-        bit32 state[4];
-        MD5Hash(test_pws[i], state);
-        stringstream ss;
-        for (int i1 = 0; i1 < 4; i1 += 1) {
-            ss << std::setw(8) << std::setfill('0') << hex << state[i1];
-        }
-        if (ss.str() != test_hashes[i]) {
-            cout << "MD5Hash test failed for " << test_pws[i] << "!" << endl;
-            cout << "Expected: " << test_hashes[i] << "\nGot:      " << ss.str() << endl;
-            return 1;
+    // for (int i = 0; i < 8; i++) {
+    //     bit32 state[4];
+    //     MD5Hash(test_pws[i], state);
+    //     stringstream ss;
+    //     for (int i1 = 0; i1 < 4; i1 += 1) {
+    //         ss << std::setw(8) << std::setfill('0') << hex << state[i1];
+    //     }
+    //     if (ss.str() != test_hashes[i]) {
+    //         cout << "MD5Hash test failed for " << test_pws[i] << "!" << endl;
+    //         cout << "Expected: " << test_hashes[i] << "\nGot:      " << ss.str() << endl;
+    //         return 1;
+    //     }
+    // }
+    for (int i = 0; i < 8; i += 4) {
+        string inputs[4] = {test_pws[i], test_pws[i+1], test_pws[i+2], test_pws[i+3]};
+        bit32 state[4][4];
+        MD5Hash_NEON(inputs, state);
+        for (int j = 0; j < 4; j++) {
+            stringstream ss;
+            for (int k = 0; k < 4; k += 1) {
+                ss << std::setw(8) << std::setfill('0') << hex << state[j][k];
+            }
+            if (ss.str() != test_hashes[i + j]) {
+                cout << "MD5Hash_NEON test failed for " << inputs[j] << "!" << endl;
+                cout << "Expected: " << test_hashes[i + j] << "\nGot:      " << ss.str() << endl;
+                return 1;
+            }
         }
     }
     cout << "MD5Hash test passed!" << endl; //请不要修改这一行
@@ -84,25 +100,63 @@ int main()
         }
         // 为了避免内存超限，我们在q.guesses中口令达到一定数目时，将其中的所有口令取出并且进行哈希
         // 然后，q.guesses将会被清空。为了有效记录已经生成的口令总数，维护一个history变量来进行记录
+        // if (curr_num > 1000000)
+        // {
+        //     auto start_hash = system_clock::now();
+        //     bit32 state[4];
+        //     for (string pw : q.guesses)
+        //     {
+        //         // TODO：对于SIMD实验，将这里替换成你的SIMD MD5函数
+        //         MD5Hash(pw, state);
+
+        //         // 以下注释部分用于输出猜测和哈希，但是由于自动测试系统不太能写文件，所以这里你可以改成cout
+        //         // a<<pw<<"\t";
+        //         // for (int i1 = 0; i1 < 4; i1 += 1)
+        //         // {
+        //         //     a << std::setw(8) << std::setfill('0') << hex << state[i1];
+        //         // }
+        //         // a << endl;
+        //     }
+
+        //     // 在这里对哈希所需的总时长进行计算
+        //     auto end_hash = system_clock::now();
+        //     auto duration = duration_cast<microseconds>(end_hash - start_hash);
+        //     time_hash += double(duration.count()) * microseconds::period::num / microseconds::period::den;
+
+        //     // 记录已经生成的口令总数
+        //     history += curr_num;
+        //     curr_num = 0;
+        //     q.guesses.clear();
+        // }
         if (curr_num > 1000000)
         {
             auto start_hash = system_clock::now();
-            bit32 state[4];
-            for (string pw : q.guesses)
+            
+            int pw_count = q.guesses.size();
+            int pad_count = pw_count % 4;
+            int hash_count = pw_count - pad_count;
+            bit32 state[4][4];
+
+            for (int i = 0; i < hash_count; i += 4)
             {
-                // TODO：对于SIMD实验，将这里替换成你的SIMD MD5函数
-                MD5Hash(pw, state);
+                MD5Hash_NEON(&q.guesses[i], state);
 
-                // 以下注释部分用于输出猜测和哈希，但是由于自动测试系统不太能写文件，所以这里你可以改成cout
-                // a<<pw<<"\t";
-                // for (int i1 = 0; i1 < 4; i1 += 1)
-                // {
-                //     a << std::setw(8) << std::setfill('0') << hex << state[i1];
+                // for (int j = 0; j < 4; j++) {
+                //     if (i + j < total_pw) {
+                       
+                //     }
                 // }
-                // a << endl;
             }
+            if (pad_count > 0)
+            {
+                bit32 state[4];
+                for (int i = hash_count; i < pw_count; i++) {   
+                    MD5Hash(q.guesses[i], state); 
+                }
+                // for (int j = 0; j < pad_count; j++) {
 
-            // 在这里对哈希所需的总时长进行计算
+                // }
+            }
             auto end_hash = system_clock::now();
             auto duration = duration_cast<microseconds>(end_hash - start_hash);
             time_hash += double(duration.count()) * microseconds::period::num / microseconds::period::den;

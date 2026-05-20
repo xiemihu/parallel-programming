@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cstring>
+#include <arm_neon.h>
 
 using namespace std;
 
@@ -43,6 +44,15 @@ typedef unsigned int bit32;
 #define H(x, y, z) ((x) ^ (y) ^ (z))
 #define I(x, y, z) ((y) ^ ((x) | (~z)))
 
+// #define F_NEON(x, y, z) vorrq_u32(vandq_u32(x, y), vandq_u32(vmvnq_u32(x), z))
+// #define G_NEON(x, y, z) vorrq_u32(vandq_u32(x, z), vandq_u32(y, vmvnq_u32(z)))
+// #define H_NEON(x, y, z) veorq_u32(veorq_u32(x, y), z)
+// #define I_NEON(x, y, z) veorq_u32(y, vorrq_u32(x, vmvnq_u32(z)))
+
+#define F_NEON(x, y, z) vbslq_u32((x), (y), (z))
+#define G_NEON(x, y, z) vbslq_u32((z), (x), (y))
+#define H_NEON(x, y, z) veorq_u32(veorq_u32((x), (y)), (z))
+#define I_NEON(x, y, z) veorq_u32((y), vornq_u32((x), (z)))
 /**
  * @Rotate Left.
  *
@@ -79,4 +89,41 @@ typedef unsigned int bit32;
   (a) += (b); \
 }
 
+#define ROTATELEFT_NEON(num, n) \
+    vsriq_n_u32(vshlq_n_u32((num), (n)), (num), 32 - (n))
+
+#define FF_NEON(a, b, c, d, x, s, ac) { \
+    uint32x4_t step1 = vaddq_u32(F_NEON(b, c, d), x); \
+    uint32x4_t step2 = vaddq_u32(a, vdupq_n_u32(ac)); \
+    a = vaddq_u32(step1, step2); \
+    a = ROTATELEFT_NEON(a, s); \
+    a = vaddq_u32(a, b); \
+}
+
+#define GG_NEON(a, b, c, d, x, s, ac) { \
+    uint32x4_t step1 = vaddq_u32(G_NEON(b, c, d), x); \
+    uint32x4_t step2 = vaddq_u32(a, vdupq_n_u32(ac)); \
+    a = vaddq_u32(step1, step2); \
+    a = ROTATELEFT_NEON(a, s); \
+    a = vaddq_u32(a, b); \
+}
+
+#define HH_NEON(a, b, c, d, x, s, ac) { \
+    uint32x4_t step1 = vaddq_u32(H_NEON(b, c, d), x); \
+    uint32x4_t step2 = vaddq_u32(a, vdupq_n_u32(ac)); \
+    a = vaddq_u32(step1, step2); \
+    a = ROTATELEFT_NEON(a, s); \
+    a = vaddq_u32(a, b); \
+}
+
+#define II_NEON(a, b, c, d, x, s, ac) { \
+    uint32x4_t step1 = vaddq_u32(I_NEON(b, c, d), x); \
+    uint32x4_t step2 = vaddq_u32(a, vdupq_n_u32(ac)); \
+    a = vaddq_u32(step1, step2); \
+    a = ROTATELEFT_NEON(a, s); \
+    a = vaddq_u32(a, b); \
+}
+
 void MD5Hash(string input, bit32 *state);
+
+void MD5Hash_NEON(const string inputs[4], bit32 state[4][4]);
